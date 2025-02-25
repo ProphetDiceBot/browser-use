@@ -7,36 +7,34 @@ import gc
 import logging
 from dataclasses import dataclass, field
 
-from drission import Drission
-from drission.page import Page, ChromeOptions, new_tab
+from drission.page import DrissionPage, ChromeOptions, new_tab
 from drission.utils import time_execution_async  # Assuming a similar utility exists
 
 from browser_use.browser.context import BrowserContext, BrowserContextConfig
 
 logger = logging.getLogger(__name__)
 
-
 @dataclass
 class BrowserConfig:
     """
     Configuration for the Browser.
-
+    
     Default values:
         headless: True
             Whether to run browser in headless mode
-
+        
         disable_security: True
             Disable browser security features
-
+        
         extra_chromium_args: []
             Extra arguments to pass to the browser
-
+        
         wss_url: None
             Connect to a browser instance via WebSocket
-
+        
         cdp_url: None
             Connect to a browser instance via CDP
-
+        
         chrome_instance_path: None
             Path to a Chrome instance to use to connect to your normal browser
             e.g. '/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome'
@@ -69,7 +67,7 @@ class Browser:
     ):
         logger.debug('Initializing new browser')
         self.config = config
-        self.drission: Drission | None = None
+        self.drission: DrissionPage | None = None
 
         self.disable_security_args = []
         if self.config.disable_security:
@@ -83,7 +81,7 @@ class Browser:
         """Create a browser context"""
         return BrowserContext(config=config, browser=self)
 
-    async def get_drission_browser(self) -> Drission:
+    async def get_drission_browser(self) -> DrissionPage:
         """Get a browser context"""
         if self.drission is None:
             return await self._init()
@@ -105,28 +103,28 @@ class Browser:
             for arg in self.disable_security_args:
                 options.add_argument(arg)
 
-        self.drission = Drission(options=options)
+        self.drission = DrissionPage(options=options)
 
         return self.drission
 
-    async def _setup_cdp(self) -> Drission:
-        """Sets up and returns a Drission instance with CDP."""
+    async def _setup_cdp(self) -> DrissionPage:
+        """Sets up and returns a DrissionPage instance with CDP."""
         if not self.config.cdp_url:
             raise ValueError('CDP URL is required')
         logger.info(f'Connecting to remote browser via CDP {self.config.cdp_url}')
-        self.drission = Drission(url=self.config.cdp_url)
+        self.drission = DrissionPage(url=self.config.cdp_url)
         return self.drission
 
-    async def _setup_wss(self) -> Drission:
-        """Sets up and returns a Drission instance with WSS."""
+    async def _setup_wss(self) -> DrissionPage:
+        """Sets up and returns a DrissionPage instance with WSS."""
         if not self.config.wss_url:
             raise ValueError('WSS URL is required')
         logger.info(f'Connecting to remote browser via WSS {self.config.wss_url}')
-        self.drission = Drission(url=self.config.wss_url)
+        self.drission = DrissionPage(url=self.config.wss_url)
         return self.drission
 
-    async def _setup_browser_with_instance(self) -> Drission:
-        """Sets up and returns a Drission instance with a Chrome instance."""
+    async def _setup_browser_with_instance(self) -> DrissionPage:
+        """Sets up and returns a DrissionPage instance with a Chrome instance."""
         if not self.config.chrome_instance_path:
             raise ValueError('Chrome instance path is required')
         import subprocess
@@ -138,7 +136,7 @@ class Browser:
             response = requests.get('http://localhost:9222/json/version', timeout=2)
             if response.status_code == 200:
                 logger.info('Reusing existing Chrome instance')
-                self.drission = Drission(url='http://localhost:9222')
+                self.drission = DrissionPage(url='http://localhost:9222')
                 return self.drission
         except requests.ConnectionError:
             logger.debug('No existing Chrome instance found, starting a new one')
@@ -166,7 +164,7 @@ class Browser:
 
         # Attempt to connect again after starting a new instance
         try:
-            self.drission = Drission(url='http://localhost:9222')
+            self.drission = DrissionPage(url='http://localhost:9222')
             return self.drission
         except Exception as e:
             logger.error(f'Failed to start a new Chrome instance.: {str(e)}')
@@ -174,8 +172,8 @@ class Browser:
                 'To start chrome in Debug mode, you need to close all existing Chrome instances and try again otherwise we cannot connect to the instance.'
             )
 
-    async def _setup_standard_browser(self) -> Drission:
-        """Sets up and returns a Drission instance with standard configurations."""
+    async def _setup_standard_browser(self) -> DrissionPage:
+        """Sets up and returns a DrissionPage instance with standard configurations."""
         options = ChromeOptions()
         if self.config.headless:
             options.add_argument('--headless')
@@ -202,11 +200,11 @@ class Browser:
         if self.config.proxy:
             options.add_argument(f'--proxy-server={self.config.proxy["server"]}')
 
-        self.drission = Drission(options=options)
+        self.drission = DrissionPage(options=options)
         return self.drission
 
-    async def _setup_browser(self) -> Drission:
-        """Sets up and returns a Drission instance."""
+    async def _setup_browser(self) -> DrissionPage:
+        """Sets up and returns a DrissionPage instance."""
         try:
             if self.config.cdp_url:
                 return await self._setup_cdp()
@@ -217,7 +215,7 @@ class Browser:
             else:
                 return await self._setup_standard_browser()
         except Exception as e:
-            logger.error(f'Failed to initialize Drission browser: {str(e)}')
+            logger.error(f'Failed to initialize DrissionPage browser: {str(e)}')
             raise
 
     async def close(self):
